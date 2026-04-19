@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from analyzer import analyze_portfolio
 from data_fetcher import get_portfolio_data
 from news_fetcher import get_news_for_ticker
+from scenario_engine import run_scenario
 
 load_dotenv()
 
@@ -100,3 +101,14 @@ def analyze(data: dict):
     except Exception as e:
         logger.error("Error in /analyze: %s", e)
         return {"analysis": str(e), "status": "error"}
+
+
+@app.post("/scenario")
+def scenario(data: dict):
+    scenario_text = data.get("scenario", "")
+    if not scenario_text:
+        return {"status": "error", "analysis": "No scenario provided."}
+
+    holdings: dict = data.get("holdings", {})
+    market_data = get_portfolio_data(list(holdings.keys()))
+    return run_scenario(scenario_text, holdings, market_data)
