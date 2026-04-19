@@ -9,7 +9,7 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 
-def analyze_portfolio(holdings: dict, market_data: dict) -> str:
+def analyze_portfolio(holdings: dict, market_data: dict, news_data: dict = None) -> str:
     portfolio_lines = []
     sector_values: dict[str, float] = {}
     total_value = 0.0
@@ -46,10 +46,33 @@ def analyze_portfolio(holdings: dict, market_data: dict) -> str:
         s: f"{(v / total_value * 100):.1f}%" for s, v in sector_values.items()
     } if total_value else {}
 
+    news_context = ""
+    if news_data:
+        news_lines = []
+        for ticker, headlines in news_data.items():
+            if not headlines:
+                continue
+            news_lines.append(f"{ticker}:")
+            for headline in headlines:
+                news_lines.append(f"- {headline}")
+            news_lines.append("")
+        if news_lines:
+            news_context = "Recent news headlines (last 7 days):\n\n" + "\n".join(news_lines).rstrip()
+
+    news_instruction = (
+        "\n\nPlease factor in the recent news headlines above when assessing each position, "
+        "noting any headlines that could affect the investment thesis, sector outlook, or near-term risk "
+        "for the holdings. If no headlines are shown for a ticker, do not speculate about news — "
+        "only reason about what is provided."
+    ) if news_context else ""
+
+    news_block = f"\n\n{news_context}{news_instruction}" if news_context else ""
+
     prompt = (
         f"Portfolio total value: ${total_value:,.2f}\n\n"
         f"Holdings:\n" + "\n".join(portfolio_lines) + "\n\n"
-        f"Sector weights: {sector_weights}\n\n"
+        f"Sector weights: {sector_weights}"
+        f"{news_block}\n\n"
         "Please provide a concise portfolio analysis covering:\n"
         "1. Overall portfolio health\n"
         "2. Concentration risks\n"

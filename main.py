@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from analyzer import analyze_portfolio
 from data_fetcher import get_portfolio_data
+from news_fetcher import get_news_for_ticker
 
 load_dotenv()
 
@@ -73,6 +74,12 @@ def get_history(
         raise HTTPException(status_code=400, detail={"error": str(e), "ticker": ticker})
 
 
+@app.get("/news/{ticker}")
+def get_news(ticker: str, company_name: str = Query(default=None)):
+    headlines = get_news_for_ticker(ticker, company_name)
+    return {"ticker": ticker, "headlines": headlines}
+
+
 @app.post("/analyze")
 def analyze(data: dict):
     try:
@@ -80,7 +87,14 @@ def analyze(data: dict):
         holdings: dict = data.get("holdings", {})
 
         market_data = get_portfolio_data(tickers)
-        analysis = analyze_portfolio(holdings, market_data)
+
+        news_data = {}
+        for ticker in holdings:
+            ticker_market_data = market_data.get(ticker, {})
+            company_name = ticker_market_data.get("company_name") if ticker_market_data else None
+            news_data[ticker] = get_news_for_ticker(ticker, company_name)
+
+        analysis = analyze_portfolio(holdings, market_data, news_data)
 
         return {"analysis": analysis, "status": "success"}
     except Exception as e:
