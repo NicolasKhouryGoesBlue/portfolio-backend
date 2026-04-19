@@ -1,7 +1,8 @@
 import logging
 
+import yfinance as yf
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from analyzer import analyze_portfolio
@@ -24,6 +25,52 @@ app.add_middleware(
 @app.get("/")
 def root():
     return {"status": "Portfolio backend is running"}
+
+
+VALID_PERIODS = {"1d", "5d", "1mo", "3mo", "6mo", "1y", "5y", "max"}
+
+
+@app.get("/prices/{ticker}")
+def get_price(ticker: str):
+    try:
+        stock = yf.Ticker(ticker)
+        info = stock.info or {}
+        return {
+            "ticker": ticker,
+            "current_price": info.get("currentPrice") or info.get("regularMarketPrice"),
+            "company_name": info.get("longName"),
+            "sector": info.get("sector"),
+            "market_cap": info.get("marketCap"),
+            "pe_ratio": info.get("trailingPE"),
+        }
+    except Exception as e:
+        logger.error("Failed to fetch price for %s: %s", ticker, e)
+        raise HTTPException(status_code=400, detail={"error": str(e), "ticker": ticker})
+
+
+@app.get("/history/{ticker}")
+def get_history(
+    ticker: str,
+    period: str = Query(...),
+):
+    if period not in VALID_PERIODS:
+        raise HTTPException(
+            status_code=400,
+            detail={"error": f"Invalid period '{period}'. Valid values: {sorted(VALID_PERIODS)}", "ticker": ticker},
+        )
+    try:
+        stock = yf.Ticker(ticker)
+        history_df = stock.history(period=period, interval="1d")
+        history = []
+        if not history_df.empty:
+            history = [
+                {"date": str(date.date()), "close": round(float(close), 2)}
+                for date, close in history_df["Close"].items()
+            ]
+        return {"ticker": ticker, "period": period, "history": history}
+    except Exception as e:
+        logger.error("Failed to fetch history for %s: %s", ticker, e)
+        raise HTTPException(status_code=400, detail={"error": str(e), "ticker": ticker})
 
 
 @app.post("/analyze")
