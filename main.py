@@ -6,6 +6,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from analyzer import analyze_portfolio
+from chat_engine import run_chat
 from data_fetcher import get_portfolio_data
 from news_fetcher import get_news_for_ticker
 from scenario_engine import run_scenario
@@ -112,3 +113,16 @@ def scenario(data: dict):
     holdings: dict = data.get("holdings", {})
     market_data = get_portfolio_data(list(holdings.keys()))
     return run_scenario(scenario_text, holdings, market_data)
+
+
+@app.post("/chat")
+def chat(data: dict):
+    message = data.get("message", "")
+    if not message:
+        return {"response": "No message provided.", "status": "error"}
+
+    conversation_history: list = data.get("conversation_history", [])
+    holdings: dict = data.get("holdings", {})
+    market_data = get_portfolio_data(list(holdings.keys()))
+    response = run_chat(message, conversation_history, holdings, market_data)
+    return {"response": response, "status": "success"}
