@@ -77,7 +77,7 @@ def get_history(
 
 
 @app.get("/news/{ticker}")
-def get_news(ticker: str, company_name: str = Query(default=None)):
+def get_news(ticker: str, company_name: str = Query(default=None)) -> dict:
     headlines = get_news_for_ticker(ticker, company_name)
     return {"ticker": ticker, "headlines": headlines}
 

@@ -73,7 +73,20 @@ def analyze_portfolio(holdings: dict, market_data: dict, news_data: dict = None)
         f"Holdings:\n" + "\n".join(portfolio_lines) + "\n\n"
         f"Sector weights: {sector_weights}"
         f"{news_block}\n\n"
-        "Please provide a concise portfolio analysis covering:\n"
+        "Your response MUST follow this exact format — no deviations:\n\n"
+        "• [Conclusion 1 — a specific takeaway, under 25 words]\n"
+        "• [Conclusion 2 — a specific takeaway, under 25 words]\n"
+        "• [Conclusion 3 — a specific takeaway, under 25 words]\n"
+        "---FULL ANALYSIS---\n"
+        "[Full multi-section analysis here]\n\n"
+        "Rules for the 3 bullet conclusions:\n"
+        "- Each bullet MUST be a conclusion or actionable takeaway, not a topic label.\n"
+        "  Bad: 'Concentration risk.' Good: 'GOOGL alone is 71% of the portfolio — rebalancing should be considered.'\n"
+        "- Each bullet MUST be under 25 words.\n"
+        "- Use the bullet character • (not -, *, or numbers).\n"
+        "- Write exactly 3 bullets — no more, no fewer.\n"
+        "- The divider line ---FULL ANALYSIS--- must appear alone on its own line immediately after the third bullet.\n\n"
+        "After the divider, write the full analysis covering:\n"
         "1. Overall portfolio health\n"
         "2. Concentration risks\n"
         "3. 2-3 specific observations about individual positions or patterns"
@@ -83,7 +96,7 @@ def analyze_portfolio(holdings: dict, market_data: dict, news_data: dict = None)
         client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
         response = client.messages.create(
             model="claude-sonnet-4-6",
-            max_tokens=1024,
+            max_tokens=4096,
             messages=[{"role": "user", "content": prompt}],
         )
         return next(

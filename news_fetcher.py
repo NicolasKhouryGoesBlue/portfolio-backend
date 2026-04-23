@@ -1,8 +1,8 @@
 """
 news_fetcher.py
 
-Fetches recent news headlines for a stock ticker from the newsapi.org API.
-Depends on: NEWSAPI_KEY in .env, the requests library, and python-dotenv.
+Fetches recent news headlines for a stock ticker from the Finnhub API.
+Depends on: FINNHUB_API_KEY in .env, the requests library, and python-dotenv.
 """
 
 import logging
@@ -16,33 +16,40 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-NEWSAPI_EVERYTHING_URL = "https://newsapi.org/v2/everything"
+FINNHUB_NEWS_URL = "https://finnhub.io/api/v1/company-news"
 
 
-def get_news_for_ticker(ticker: str, company_name: str = None) -> list[str]:
-    api_key = os.environ.get("NEWSAPI_KEY")
+def get_news_for_ticker(ticker: str, company_name: str = None) -> list[dict]:
+    api_key = os.environ.get("FINNHUB_API_KEY")
     if not api_key:
-        logger.warning("NEWSAPI_KEY is missing or blank — skipping news fetch")
+        logger.warning("FINNHUB_API_KEY is missing or blank — skipping news fetch")
         return []
 
-    query = company_name if company_name else ticker
+    to_date = date.today().isoformat()
     from_date = (date.today() - timedelta(days=7)).isoformat()
 
     params = {
-        "q": query,
+        "symbol": ticker,
         "from": from_date,
-        "language": "en",
-        "sortBy": "publishedAt",
-        "pageSize": 5,
-        "apiKey": api_key,
+        "to": to_date,
+        "token": api_key,
     }
 
     try:
-        # /v2/everything searches all sources; broader and more relevant than /v2/top-headlines for financial tickers
-        response = requests.get(NEWSAPI_EVERYTHING_URL, params=params, timeout=5)
+        response = requests.get(FINNHUB_NEWS_URL, params=params, timeout=5)
         response.raise_for_status()
-        articles = response.json().get("articles", [])
-        return [article["title"] for article in articles if article.get("title")]
+        articles = response.json()
+        if not isinstance(articles, list):
+            return []
+        return [
+            {
+                "headline": a.get("headline", ""),
+                "source": a.get("source", ""),
+                "url": a.get("url", ""),
+            }
+            for a in articles[:5]
+            if a.get("headline")
+        ]
     except Exception as e:
         logger.error("Failed to fetch news for %s: %s", ticker, e)
         return []
